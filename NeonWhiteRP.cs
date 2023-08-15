@@ -9,6 +9,8 @@ using Discord;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace NeonWhiteRPNew
 {
@@ -256,20 +258,24 @@ namespace NeonWhiteRPNew
             if (checkedForUpdates) yield break;
             yield return new WaitForSecondsRealtime(1f);
 
+            yield return CheckForUpdatesAsync();
+        }
+
+        private async Task CheckForUpdatesAsync()
+        {
             Version currentVersion = new Version(modVersion);
-            //HttpClient client = new HttpClient();
-            //client.DefaultRequestHeaders.Add("User-Agent", "NeonWhiteRichPresence");
-            //HttpResponseMessage response = await client.GetAsync("https://api.github.com/repos/Avangelista/StatusMagic/releases/latest");
-            //if (!response.IsSuccessStatusCode)
-            //{
-            //    LoggerInstance.Error("Failed to check for updates");
-            //    LoggerInstance.Error($"Response: {response.StatusCode} {response.ReasonPhrase}");
-            //}
-            //String responseString = await response.Content.ReadAsStringAsync();
-            //int startIndex = responseString.IndexOf("tag_name") + 11;
-            //int endIndex = responseString.IndexOf("\"", startIndex);
-            //String latestVersionString = responseString.Substring(startIndex, endIndex - startIndex);
-            String latestVersionString = "1.0.1";
+            HttpClient client = new HttpClient();
+            client.DefaultRequestHeaders.Add("User-Agent", "NeonWhiteRichPresence");
+            HttpResponseMessage response = await client.GetAsync("https://api.github.com/repos/Tuchan/NeonWhiteRP/releases/latest");
+            if (!response.IsSuccessStatusCode)
+            {
+                LoggerInstance.Error("Failed to check for updates");
+                LoggerInstance.Error($"Response: {response.StatusCode} {response.ReasonPhrase}");
+            }
+            String responseString = await response.Content.ReadAsStringAsync();
+            int startIndex = responseString.IndexOf("tag_name") + 11;
+            int endIndex = responseString.IndexOf("\"", startIndex);
+            String latestVersionString = responseString.Substring(startIndex, endIndex - startIndex);
             Version latestVersion = new Version(latestVersionString);
             if (currentVersion < latestVersion) //this is a mess ik :((((
             {
