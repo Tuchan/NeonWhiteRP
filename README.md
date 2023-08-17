@@ -14,6 +14,7 @@ A Discord Rich Presence (RP) Mod that aims for customization.
 - Level Rush Modes
 - Central Heaven (Map) Actions
 - Cutscenes
+- Leaderboard placements
 - Global Neon Rank
 - and more...
 
@@ -21,9 +22,7 @@ A Discord Rich Presence (RP) Mod that aims for customization.
 > To change RP properties you have to have MelonPreferencesManager installed.
 
 # How to install
-1. [Download the newest Discord's GameSDK](https://discord.com/developers/docs/game-sdk/sdk-starter-guide) (v3.2.1 was used while creating this mod)
-2. Unzip then go into `/lib` and depending on your system choose `x86` - 32 bit or `x86_64` - 64 bit and copy `discord_game_sdk.dll` and put it in your Mod folder
-3. Go to [releases](https://github.com/Tuchan/NeonWhiteRP/releases/latest) and download the `NeonWhiteRP.dll` and put it in your Mod folder
+1. Go to [releases](https://github.com/Tuchan/NeonWhiteRP/releases/latest) and download the `NeonWhiteRP.dll` and put it in your Mod folder
 
 > [!NOTE]  
 > If there is an update, you will see a pop up in game.
