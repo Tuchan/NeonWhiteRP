@@ -1,7 +1,7 @@
 # NeonWhiteRP
 A Discord Rich Presence (RP) Mod that aims for customization.
 
-![hub](https://github.com/Tuchan/NeonWhiteRP/assets/43300571/2bf7bf26-ae49-49e8-b634-945fd911b5fa) ![game](https://github.com/Tuchan/NeonWhiteRP/assets/43300571/63021616-0b8f-4a9e-bd52-543dc4b7c6b6) ![neonrank](https://github.com/Tuchan/NeonWhiteRP/assets/43300571/57955a80-b2fb-411f-bfa6-95bffdf88a9b)
+![hub](https://github.com/Tuchan/NeonWhiteRP/assets/43300571/2bf7bf26-ae49-49e8-b634-945fd911b5fa) ![game](https://github.com/Tuchan/NeonWhiteRP/assets/43300571/cb1e9cf7-4a22-4d45-8258-7623a2597428) ![neonrank](https://github.com/Tuchan/NeonWhiteRP/assets/43300571/57955a80-b2fb-411f-bfa6-95bffdf88a9b)
 
 > [!NOTE]  
 > In the near future, this mod will be simplified and put as a module in NeonLite.
@@ -9,12 +9,12 @@ A Discord Rich Presence (RP) Mod that aims for customization.
 # Supports
 - Menus
 - Normal Levels
-- Sidequest levels
+- Sidequest Levels
 - Custom Levels (RMMBY)
 - Level Rush Modes
 - Central Heaven (Map) Actions
 - Cutscenes
-- Leaderboard placements
+- Leaderboard Placements
 - Global Neon Rank
 - and more...
 
@@ -22,7 +22,7 @@ A Discord Rich Presence (RP) Mod that aims for customization.
 > To change RP properties you have to have MelonPreferencesManager installed.
 
 # How to install
-1. Go to [releases](https://github.com/Tuchan/NeonWhiteRP/releases/latest) and download the `NeonWhiteRP.dll` and put it in your Mod folder
+1. Go to [releases](https://github.com/Tuchan/NeonWhiteRP/releases/latest) and download the `NeonWhiteRP.dll` and put it in your Mods folder
 
 > [!NOTE]  
 > If there is an update, you will see a pop up in game.
