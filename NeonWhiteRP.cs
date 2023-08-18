@@ -11,6 +11,9 @@ using TMPro;
 using System.Collections;
 using System.Net.Http;
 using System.Threading.Tasks;
+using static LevelRush;
+using System.Collections.Generic;
+using static MelonLoader.MelonLogger;
 
 namespace NeonWhiteRPNew
 {
@@ -29,7 +32,9 @@ namespace NeonWhiteRPNew
         public static string modVersion;
         public static LevelRush.LevelRushType globalLevelRushType = LevelRush.LevelRushType.None;
         public static bool globalHeavenMode = true;
+        public static string globalLevelRushTime = "-1";
         public static string playerName = "Neon White";
+        public static int globalUserRanking = 0;
 
         public override void OnInitializeMelon()
         {
@@ -39,7 +44,7 @@ namespace NeonWhiteRPNew
             {
                 modVersion = melonInfo.Version;
             }
-            UpdateRP(new Activity{Details = "Launching the game",Assets ={LargeImage = "neonwhite",LargeText = "Rich Presence Created by Tuchan ver."+modVersion,},});
+            UpdateRP(new Activity{Details = "Launching the game",Assets ={LargeImage = "neonwhite",LargeText = "Rich Presence Created by Tuchan ver. "+modVersion,},});
         }
 
         [Obsolete]
@@ -67,9 +72,17 @@ namespace NeonWhiteRPNew
             harmonyMethod = new HarmonyMethod(typeof(NeonWhiteRP).GetMethod("PostSetUsername"));
             Harmony.Patch(method, null, harmonyMethod);
 
+            method = typeof(Leaderboards).GetMethod("GetUserRanking");
+            harmonyMethod = new HarmonyMethod(typeof(NeonWhiteRP).GetMethod("PreGetUserRanking"));
+            Harmony.Patch(method, harmonyMethod);
+
             method = typeof(MenuScreenGlobalNeonScore).GetMethod("LeaderboardPlayerStatsCallback");
             harmonyMethod = new HarmonyMethod(typeof(NeonWhiteRP).GetMethod("PostLeaderboardPlayerStatsCallback"));
             Harmony.Patch(method, null, harmonyMethod);
+
+            method = typeof(LeaderboardScore).GetMethod("SetScore");
+            harmonyMethod = new HarmonyMethod(typeof(NeonWhiteRP).GetMethod("PostSetScore"));
+            Harmony.Patch(method, harmonyMethod);
         }
         
         private void OnActiveSceneChange(Scene previousScene, Scene newScene)
@@ -86,14 +99,31 @@ namespace NeonWhiteRPNew
                     activity.Assets.LargeText = "Rich Presence Created by Tuchan";
                     activity.Timestamps.Start = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                     break;
+                case "CustomLevelMenu":
+                    activity.Details = "In Custom Level Menu";
+                    activity.Assets.LargeImage = "neonwhite";
+                    activity.Assets.LargeText = "Rich Presence Created by Tuchan";
+                    activity.Assets.SmallImage = "rmmby";
+                    activity.Assets.SmallText = "Custom Levels Powered by RMMBY";
+                    activity.Timestamps.Start = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    break;
                 default: //Level names
-                    resets = (lastLevel == game.GetCurrentLevel().levelID) ? resets + 1 : 0;
-                    activity.Details = "Speedrunning - " + LocalizationManager.GetTranslation(game.GetCurrentLevel().GetLevelDisplayName(), true, 0, true, false, null, null, true);
-                    activity.State = "Best: " + Game.GetTimerFormattedMillisecond(GameDataManager.GetLevelStats(game.GetCurrentLevel().levelID).GetTimeLastMicroseconds()) + " | Resets: " + resets;
+                    if(lastLevel == game.GetCurrentLevel().levelID)
+                    {
+                        if (game.GetCurrentLevelTimerCentiseconds() == 0) resets++;
+                    } else
+                    {
+                        resets = 0;
+                    }
+                    //resets = (lastLevel == game.GetCurrentLevel().levelID) ? resets + 1 : 0; //todo fix that
+                    String levelName = LocalizationManager.GetTranslation(game.GetCurrentLevel().GetLevelDisplayName(), true, 0, true, false, null, null, true);
+                    String bestTime = Game.GetTimerFormattedMillisecond(GameDataManager.GetLevelStats(game.GetCurrentLevel().levelID).GetTimeBestMicroseconds());
+                    activity.Details = "Speedrunning - " + ((SceneManager.GetActiveScene().name == "CustomLevel") ? game.GetCurrentLevel().levelDisplayName : levelName);
+                    activity.State = "PB: " + (bestTime == "16666:39.999" || bestTime == "0:00.000" ? "N/A" : bestTime) + " (#" + globalUserRanking + ") | Resets: " + resets;
                     if (SceneManager.GetActiveScene().name == "CustomLevel")
                     {
                         activity.Assets.LargeImage = "rmmby";
-                        activity.Assets.LargeText = "Custom Level Powered by RMMBY"; //also add custom level menu
+                        activity.Assets.LargeText = "Custom Levels Powered by RMMBY";
                     } else
                     {
                         activity.Assets.LargeImage = "location" + game.GetCurrentLevel().environmentLocationData.locationID.ToLower();
@@ -106,20 +136,30 @@ namespace NeonWhiteRPNew
                     }
                     else
                     {
+                        activity.State = "PB: " + (globalLevelRushTime == "16666:39.999" || globalLevelRushTime == "0:00.000" ? "N/A" : globalLevelRushTime) + " (#" + globalUserRanking + ") | Resets: " + resets;
                         activity.Assets.SmallImage = globalLevelRushType.ToString().ToLower().Substring(0, globalLevelRushType.ToString().Length - 4) + (globalHeavenMode == true ? "heaven" : "hell");
                         activity.Assets.SmallText = globalLevelRushType.ToString().Substring(0, globalLevelRushType.ToString().Length - 4) + "'s " + (globalHeavenMode == true ? "Heaven" : "Hell") + " Rush";
                     }
 
-                    if (!SessionVsLevel.Value || lastLevel != game.GetCurrentLevel().levelID)
+                    if (!SessionVsLevel.Value)
                     {
-                        activity.Timestamps.Start = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                        if (SessionVsLevel.Value)
+                        if (game.GetCurrentLevelTimerCentiseconds() == 0)
                         {
+                            activity.Timestamps.Start = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                             globalTimestamp = activity.Timestamps.Start;
+                        }
+                        else
+                        {
+                            activity.Timestamps.Start = globalTimestamp;
                         }
                     }
                     else if (SessionVsLevel.Value)
                     {
+                        if(lastLevel != game.GetCurrentLevel().levelID)
+                        {
+                            activity.Timestamps.Start = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                            globalTimestamp = activity.Timestamps.Start;
+                        }
                         activity.Timestamps.Start = globalTimestamp;
                     }
 
@@ -128,8 +168,7 @@ namespace NeonWhiteRPNew
             };
             UpdateRP(activity);
         }
-
-        public static void PostEnterLocation(ref LocationData data) //was static
+        public static void PostEnterLocation(ref LocationData data)
         {
             Activity activity = new Activity();
             switch (data.locationID)
@@ -189,7 +228,6 @@ namespace NeonWhiteRPNew
                 UpdateRP(activity);
             }
         }
-
         public static void PostSetState(ref MainMenu.State newState)
         {
             Activity activity = new Activity();
@@ -224,13 +262,11 @@ namespace NeonWhiteRPNew
                 UpdateRP(activity);
             }
         }
-
         public static void PostSetLevelRush(ref LevelRush.LevelRushType levelRushType, ref bool heavenRush)
         {
             globalLevelRushType = levelRushType;
             globalHeavenMode = heavenRush;
         }
-
         public static void PostSetUsername(ref string newName)
         {
             playerName = newName;
@@ -239,15 +275,29 @@ namespace NeonWhiteRPNew
         {
             UpdateRP(new Activity { Details = playerName + "'s Global Neon Rank: #" + rankingValue, State = "", Assets = { LargeImage = "globalneonrank", LargeText = "Viewing Global Neon Score", }, Timestamps = { Start = DateTimeOffset.UtcNow.ToUnixTimeSeconds()} });
         }
-        
-
+        public static void PreGetUserRanking(Leaderboards __instance)
+        {
+            globalUserRanking = HarmonyLib.Traverse.Create(__instance).Field("userRanking").GetValue<int>();
+        }
+        public static void PostSetScore(LeaderboardScore __instance, ref ScoreData newData)
+        {
+            if (newData._userScore)
+            {
+                globalLevelRushTime = Game.GetTimerFormattedMillisecond(Utils.ConvertMillisecondsToMicroseconds(newData._scoreValueMilliseconds));
+            }
+        }
         private static void UpdateRP(Activity activity)
         {
-            if (RPEnable.Value)
+            if(!RPEnable.Value)
             {
-                activityManager = discord.GetActivityManager();
-                activityManager.UpdateActivity(activity, (res) => { Debug.Log("Result: " + res); });
+                activity = new Activity();
             }
+            activityManager = discord.GetActivityManager();
+            activityManager.UpdateActivity(activity, (res) => { Debug.Log("Result: " + res); });
+        }
+        public override void OnPreferencesSaved()
+        {
+            UpdateRP(new Activity());
         }
         public override void OnUpdate()
         {
@@ -260,7 +310,6 @@ namespace NeonWhiteRPNew
 
             yield return CheckForUpdatesAsync();
         }
-
         private async Task CheckForUpdatesAsync()
         {
             Version currentVersion = new Version(modVersion);
@@ -345,28 +394,27 @@ namespace NeonWhiteRPNew
         public override void OnApplicationStart()
         {
             config = MelonPreferences.CreateCategory("Discord Rich Presence Settings");
-            RPEnable = config.CreateEntry("Enable Rich Presence", true, description: "Enables Rich Presence, duh. (Requires Restart)");
+            RPEnable = config.CreateEntry("Enable Rich Presence", true, description: "Enables Rich Presence, duh. (To fully remove \"RP\" effect, uninstall)");
 
             SessionVsLevel = config.CreateEntry("Enable Session Times", true, description: "If set to TRUE, the RP 'time elapsed' will stay across restarts. If FALSE, time elapsed will reset after restarting the level.");
-
             HUBFirst = config.CreateEntry("Central Heaven 1st Line", "Wandering around Central Heaven", description: "Customize the first line that shows up when going into the Central Heaven. To remove, leave blank.");
             HUBSecond = config.CreateEntry("Central Heaven 2nd Line", "", description: "Customize the second line that shows up when going into the Central Heaven. To remove, leave blank.");
-            PORTALFirst = config.CreateEntry("Heaven's Gate 1st Line", "Selecting a Job at Heaven's Gate", description: "Customize the first line that shows up when going into Heaven's Gate. To remove, leave blank.");
-            PORTALSecond = config.CreateEntry("Heaven's Gate 2nd Line", "", description: "Customize the second line that shows up when going into Heaven's Gate. To remove, leave blank.");
+            PORTALFirst = config.CreateEntry("Heavens Gate 1st Line", "Selecting a Job at Heaven's Gate", description: "Customize the first line that shows up when going into Heaven's Gate. To remove, leave blank.");
+            PORTALSecond = config.CreateEntry("Heavens Gate 2nd Line", "", description: "Customize the second line that shows up when going into Heaven's Gate. To remove, leave blank.");
             BEACHFirst = config.CreateEntry("Beach 1st Line", "Enjoying the view of a Beach", description: "Customize the first line that shows up when going into the Beach. To remove, leave blank.");
             BEACHSecond = config.CreateEntry("Beach 2nd Line", "", description: "Customize the second line that shows up when going into the Beach. To remove, leave blank.");
             BARFirst = config.CreateEntry("Neon Bar 1st Line", "Talking with other Neons", description: "Customize the first line that shows up when going into the Bar. To remove, leave blank.");
             BARSecond = config.CreateEntry("Neon Bar 2nd Line", "at a Neon Bar", description: "Customize the second line that shows up when going into the Bar. To remove, leave blank.");
-            SQUAREFirst = config.CreateEntry("Believer's Park 1st Line", "Talking with residents", description: "Customize the first line that shows up when going into Believer's Park. To remove, leave blank.");
-            SQUARESecond = config.CreateEntry("Believer's Park 2nd Line", "at Believer's Park", description: "Customize the second line that shows up when going into Believer's Park. To remove, leave blank.");
+            SQUAREFirst = config.CreateEntry("Believers Park 1st Line", "Talking with residents", description: "Customize the first line that shows up when going into Believer's Park. To remove, leave blank.");
+            SQUARESecond = config.CreateEntry("Believers Park 2nd Line", "at Believer's Park", description: "Customize the second line that shows up when going into Believer's Park. To remove, leave blank.");
             CHURCHFirst = config.CreateEntry("Cathedral 1st Line", "Attending the daily sermon", description: "Customize the first line that shows up when going into The Cathedral. To remove, leave blank.");
             CHURCHSecond = config.CreateEntry("Cathedral 2nd Line", "at The Cathedral", description: "Customize the second line that shows up when going into The Cathedral. To remove, leave blank.");
             SHRINEFirst = config.CreateEntry("Neon Mask Shrine 1st Line", "Visiting the Neon Mask Shrine", description: "Customize the first line that shows up when going into Neon Mask Shrine. To remove, leave blank.");
             SHRINESecond = config.CreateEntry("Neon Mask Shrine 2nd Line", "", description: "Customize the second line that shows up when going into Neon Mask Shrine. To remove, leave blank.");
             CITYHALLLOBBYFirst = config.CreateEntry("Heaven Central Authority 1st Line", "Getting new assignments from Mikey", description: "Customize the first line that shows up when going into Heaven Central Authority. To remove, leave blank.");
             CITYHALLLOBBYSecond = config.CreateEntry("Heaven Central Authority 2nd Line", "at Heaven Central Authority", description: "Customize the second line that shows up when going into Heaven Central Authority. To remove, leave blank.");
-            WHITESROOMFirst = config.CreateEntry("White's Room 1st Line", "Resting in White's Room", description: "Customize the first line that shows up when going into White's Room. To remove, leave blank.");
-            WHITESROOMSecond = config.CreateEntry("White's Room 2nd Line", "", description: "Customize the second line that shows up when going into White's Room. To remove, leave blank.");
+            WHITESROOMFirst = config.CreateEntry("Whites Room 1st Line", "Resting in White's Room", description: "Customize the first line that shows up when going into White's Room. To remove, leave blank.");
+            WHITESROOMSecond = config.CreateEntry("Whites Room 2nd Line", "", description: "Customize the second line that shows up when going into White's Room. To remove, leave blank.");
 
             DIALOGUEEnable = config.CreateEntry("Enable Dialogue Rich Presence", true, description: "Enables Rich Presence for cutscenes/dialogue.");
             DIALOGUEFirst = config.CreateEntry("Dialogue 1st Line", "Viewing a cutscene", description: "Customize the first line that shows up when watching a cutscene/dialogue. To remove, leave blank.");

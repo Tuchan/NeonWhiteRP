@@ -4,7 +4,7 @@ using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-[assembly: MelonInfo(typeof(NeonWhiteRP), "Neon White RP", "1.0.0", "Tuchan")]
+[assembly: MelonInfo(typeof(NeonWhiteRP), "Neon White RP", "1.1.0", "Tuchan")]
 [assembly: MelonColor(ConsoleColor.Blue)]
 
 [assembly: AssemblyTitle("NeonWhiteRPNew")]
