@@ -23,6 +23,7 @@ A Discord Rich Presence (RP) Mod that aims for customization.
 
 # How to install
 1. Go to [releases](https://github.com/Tuchan/NeonWhiteRP/releases/latest) and download the `NeonWhiteRP.dll` and put it in your Mods folder
+2. (only if you're downloading the mod for the first time) Download [Discord's GameSDK](https://dl-game-sdk.discordapp.net/3.2.1/discord_game_sdk.zip) and put it in your Mod folder
 
 > [!NOTE]  
 > If there is an update, you will see a pop up in game.
