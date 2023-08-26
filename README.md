@@ -32,3 +32,7 @@ A Discord Rich Presence (RP) Mod that aims for customization.
 - Big thanks to [MOPSKATER](https://github.com/MOPSKATER) for helping with this dramatically haha
 
 If you want to launch your game faster, add `--melonloader.hideconsole` to launch properties (right click the game on steam -> properties -> launch options at the bottom of that window) to hide the console that melonloader loads in.
+
+# Other Neon White Projects
+
+[<img alt="NeonWhiteRP" width="500px" src="https://socialify.git.ci/Tuchan/NeonSoundReplacer/image?description=1&owner=1&theme=Dark"/>](https://github.com/Tuchan/NeonSoundReplacer)
