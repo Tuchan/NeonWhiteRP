@@ -4,7 +4,7 @@ A Discord Rich Presence (RP) Mod that aims for customization.
 ![hub](https://github.com/Tuchan/NeonWhiteRP/assets/43300571/2bf7bf26-ae49-49e8-b634-945fd911b5fa) ![game](https://github.com/Tuchan/NeonWhiteRP/assets/43300571/cb1e9cf7-4a22-4d45-8258-7623a2597428) ![neonrank](https://github.com/Tuchan/NeonWhiteRP/assets/43300571/57955a80-b2fb-411f-bfa6-95bffdf88a9b)
 
 > [!NOTE]  
-> In the near future, this mod will be simplified and put as a module in NeonLite.
+> A simplified version of this mod is now available in [NeonLite](https://github.com/MOPSKATER/NeonLite).
 
 # Supports
 - Menus
