@@ -11,9 +11,7 @@ using TMPro;
 using System.Collections;
 using System.Net.Http;
 using System.Threading.Tasks;
-using static LevelRush;
-using System.Collections.Generic;
-using static MelonLoader.MelonLogger;
+using System.Text;
 
 namespace NeonWhiteRPNew
 {
@@ -38,18 +36,19 @@ namespace NeonWhiteRPNew
 
         public override void OnInitializeMelon()
         {
-            discord = new Discord.Discord(1138868754688770148, (ulong)CreateFlags.Default);
             MelonInfoAttribute melonInfo = Assembly.GetExecutingAssembly().GetCustomAttribute<MelonInfoAttribute>();
             if (melonInfo != null)
             {
                 modVersion = melonInfo.Version;
             }
-            UpdateRP(new Activity{Details = "Launching the game",Assets ={LargeImage = "neonwhite",LargeText = "Rich Presence Created by Tuchan ver. "+modVersion,},});
         }
 
         [Obsolete]
         public override void OnApplicationLateStart()
         {
+            discord = new Discord.Discord(1138868754688770148, (ulong)CreateFlags.Default);
+            UpdateRP(new Activity { Details = "Launching the game", Assets = { LargeImage = "neonwhite", LargeText = "Rich Presence Created by Tuchan ver. " + modVersion, }, });
+
             game = Singleton<Game>.Instance;
 
             SceneManager.activeSceneChanged += OnActiveSceneChange;
@@ -72,9 +71,9 @@ namespace NeonWhiteRPNew
             harmonyMethod = new HarmonyMethod(typeof(NeonWhiteRP).GetMethod("PostSetUsername"));
             Harmony.Patch(method, null, harmonyMethod);
 
-            method = typeof(Leaderboards).GetMethod("GetUserRanking");
-            harmonyMethod = new HarmonyMethod(typeof(NeonWhiteRP).GetMethod("PreGetUserRanking"));
-            Harmony.Patch(method, harmonyMethod);
+            method = typeof(Leaderboards).GetMethod("SetUserRanking");
+            harmonyMethod = new HarmonyMethod(typeof(NeonWhiteRP).GetMethod("PostSetUserRanking"));
+            Harmony.Patch(method, null, harmonyMethod);
 
             method = typeof(MenuScreenGlobalNeonScore).GetMethod("LeaderboardPlayerStatsCallback");
             harmonyMethod = new HarmonyMethod(typeof(NeonWhiteRP).GetMethod("PostLeaderboardPlayerStatsCallback"));
@@ -94,13 +93,15 @@ namespace NeonWhiteRPNew
                     lastLevel = "";
                     resets = 0;
                     MelonCoroutines.Start(CheckForUpdates());
-                    activity.Details = "In Main Menu";
+                    activity.Details = MenuFirst.Value;
+                    activity.State = MenuSecond.Value;
                     activity.Assets.LargeImage = "neonwhite";
                     activity.Assets.LargeText = "Rich Presence Created by Tuchan";
                     activity.Timestamps.Start = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                     break;
                 case "CustomLevelMenu":
-                    activity.Details = "In Custom Level Menu";
+                    activity.Details = CustomMenuFirst.Value;
+                    activity.State = CustomMenuSecond.Value;
                     activity.Assets.LargeImage = "neonwhite";
                     activity.Assets.LargeText = "Rich Presence Created by Tuchan";
                     activity.Assets.SmallImage = "rmmby";
@@ -118,8 +119,8 @@ namespace NeonWhiteRPNew
                     //resets = (lastLevel == game.GetCurrentLevel().levelID) ? resets + 1 : 0; //todo fix that
                     String levelName = LocalizationManager.GetTranslation(game.GetCurrentLevel().GetLevelDisplayName(), true, 0, true, false, null, null, true);
                     String bestTime = Game.GetTimerFormattedMillisecond(GameDataManager.GetLevelStats(game.GetCurrentLevel().levelID).GetTimeBestMicroseconds());
-                    activity.Details = "Speedrunning - " + ((SceneManager.GetActiveScene().name == "CustomLevel") ? game.GetCurrentLevel().levelDisplayName : levelName);
-                    activity.State = "PB: " + (bestTime == "16666:39.999" || bestTime == "0:00.000" ? "N/A" : bestTime) + " (#" + globalUserRanking + ") | Resets: " + resets;
+                    activity.Details = CustomString(SpeedrunFirst.Value, ((SceneManager.GetActiveScene().name == "CustomLevel") ? game.GetCurrentLevel().levelDisplayName : levelName), (bestTime == "16666:39.999" || bestTime == "0:00.000" ? "N/A" : bestTime), globalUserRanking.ToString(), resets.ToString(), null);
+                    activity.State = CustomString(SpeedrunSecond.Value, ((SceneManager.GetActiveScene().name == "CustomLevel") ? game.GetCurrentLevel().levelDisplayName : levelName), (bestTime == "16666:39.999" || bestTime == "0:00.000" ? "N/A" : bestTime), globalUserRanking.ToString(), resets.ToString(), null);
                     if (SceneManager.GetActiveScene().name == "CustomLevel")
                     {
                         activity.Assets.LargeImage = "rmmby";
@@ -136,7 +137,7 @@ namespace NeonWhiteRPNew
                     }
                     else
                     {
-                        activity.State = "PB: " + (globalLevelRushTime == "16666:39.999" || globalLevelRushTime == "0:00.000" ? "N/A" : globalLevelRushTime) + " (#" + globalUserRanking + ") | Resets: " + resets;
+                        activity.State = CustomString(SpeedrunSecond.Value, ((SceneManager.GetActiveScene().name == "CustomLevel") ? game.GetCurrentLevel().levelDisplayName : levelName), (globalLevelRushTime == "16666:39.999" || globalLevelRushTime == "0:00.000" ? "N/A" : globalLevelRushTime), globalUserRanking.ToString(), resets.ToString(), null);
                         activity.Assets.SmallImage = globalLevelRushType.ToString().ToLower().Substring(0, globalLevelRushType.ToString().Length - 4) + (globalHeavenMode == true ? "heaven" : "hell");
                         activity.Assets.SmallText = globalLevelRushType.ToString().Substring(0, globalLevelRushType.ToString().Length - 4) + "'s " + (globalHeavenMode == true ? "Heaven" : "Hell") + " Rush";
                     }
@@ -273,18 +274,70 @@ namespace NeonWhiteRPNew
         }
         public static void PostLeaderboardPlayerStatsCallback(ref int rankingValue)
         {
-            UpdateRP(new Activity { Details = playerName + "'s Global Neon Rank: #" + rankingValue, State = "", Assets = { LargeImage = "globalneonrank", LargeText = "Viewing Global Neon Score", }, Timestamps = { Start = DateTimeOffset.UtcNow.ToUnixTimeSeconds()} });
+            UpdateRP(new Activity { Details = CustomString(GlobalRankFirst.Value, null, null, null, null, rankingValue.ToString()), State = CustomString(GlobalRankSecond.Value, null, null, null, null, rankingValue.ToString()), Assets = { LargeImage = "globalneonrank", LargeText = "Viewing Global Neon Score", }, Timestamps = { Start = DateTimeOffset.UtcNow.ToUnixTimeSeconds()} });
         }
-        public static void PreGetUserRanking(Leaderboards __instance)
+        public static void PostSetUserRanking(ref int newRanking)
         {
-            globalUserRanking = HarmonyLib.Traverse.Create(__instance).Field("userRanking").GetValue<int>();
+            globalUserRanking = newRanking;
         }
         public static void PostSetScore(LeaderboardScore __instance, ref ScoreData newData)
         {
-            if (newData._userScore)
+            if (newData._userScore) globalLevelRushTime = Game.GetTimerFormattedMillisecond(Utils.ConvertMillisecondsToMicroseconds(newData._scoreValueMilliseconds));
+        }
+        public static string CustomString(string input, string levelName, string bestTime, string levelRank, string resets, string rankingValue)
+        {
+            StringBuilder output = new StringBuilder();
+            bool isToken = false;
+            StringBuilder token = new StringBuilder();
+
+            foreach (char symbol in input)
             {
-                globalLevelRushTime = Game.GetTimerFormattedMillisecond(Utils.ConvertMillisecondsToMicroseconds(newData._scoreValueMilliseconds));
+                if (symbol == '%')
+                {
+                    if (isToken)
+                    {
+                        switch (token.ToString())
+                        {
+                            case "levelname":
+                                output.Append(levelName);
+                                break;
+                            case "besttime":
+                                output.Append(bestTime);
+                                break;
+                            case "levelrank":
+                                output.Append(levelRank);
+                                break;
+                            case "resets":
+                                output.Append(resets);
+                                break;
+                            case "playername":
+                                output.Append(playerName);
+                                break;
+                            case "globalrank":
+                                output.Append(rankingValue);
+                                break;
+                            default:
+                                output.Append($"%{token}%");
+                                break;
+                        }
+                        token.Clear();
+                    }
+                    isToken = !isToken;
+                    continue;
+                }
+
+                if (isToken)
+                {
+                    token.Append(symbol);
+                }
+                else
+                {
+                    output.Append(symbol);
+                }
             }
+
+            if (isToken) output.Append($"%{token}");
+            return output.ToString();
         }
         private static void UpdateRP(Activity activity)
         {
@@ -326,32 +379,25 @@ namespace NeonWhiteRPNew
             int endIndex = responseString.IndexOf("\"", startIndex);
             String latestVersionString = responseString.Substring(startIndex, endIndex - startIndex);
             Version latestVersion = new Version(latestVersionString);
-            if (currentVersion < latestVersion) //this is a mess ik :((((
+            if (currentVersion < latestVersion)
             {
+                String githubLink = "https://github.com/Tuchan/NeonWhiteRP/releases/latest";
+                String popupPrefix = "Main Menu/Canvas/Popup/Popup Window/Window Holder/Popup Scaler/Popup Content Holder/";
                 LoggerInstance.Warning("A new update is avaliable!");
                 LoggerInstance.Warning($"Current Version: {modVersion}");
                 LoggerInstance.Warning($"Latest Version: {latestVersionString}");
-                LoggerInstance.Warning("Download it here: https://github.com/Tuchan/NeonWhiteRP/releases/latest");
-
-                MenuButtonHolder menuButtonHolder = GameObject.Find("Main Menu/Canvas/Main Menu/Panel/Title Panel/Title Buttons/Quit Button").GetComponent<MenuButtonHolder>();
-                menuButtonHolder.ButtonRef.onClick.Invoke();
-
-                TextMeshProUGUI popupText = GameObject.Find("Main Menu/Canvas/Popup/Popup Window/Window Holder/Popup Scaler/Popup Content Holder/Popup Text").GetComponent<TextMeshProUGUI>();
-                popupText.text = "A new update is avaliable for NeonWhiteRP, do you want to visit the download page?";
-
-                GameObject yesButton = GameObject.Find("Main Menu/Canvas/Popup/Popup Window/Window Holder/Popup Scaler/Popup Content Holder/Popup Buttons/Button Yes");
-                yesButton.SetActive(false);
-
-                GameObject moddedButton = GameObject.Find("Main Menu/Canvas/Popup/Popup Window/Window Holder/Popup Scaler/Popup Content Holder/Popup Buttons/Button Cancel");
-                moddedButton.SetActive(true);
-                moddedButton.GetComponentInChildren<TextMeshProUGUI>().text = "yes";
-                moddedButton.transform.SetSiblingIndex(1);
-                Button moddedButtonClass = GameObject.Find("Main Menu/Canvas/Popup/Popup Window/Window Holder/Popup Scaler/Popup Content Holder/Popup Buttons/Button Cancel/Button").GetComponent<Button>();
-                moddedButtonClass.onClick = new Button.ButtonClickedEvent();
-                moddedButtonClass.onClick.AddListener(() => Application.OpenURL("https://github.com/Tuchan/NeonWhiteRP/releases/latest"));
-
-                GameObject noButton = GameObject.Find("Main Menu/Canvas/Popup/Popup Window/Window Holder/Popup Scaler/Popup Content Holder/Popup Buttons/Button No");
-                noButton.transform.SetSiblingIndex(2);
+                LoggerInstance.Warning("Download it here: " + githubLink);
+                GameObject.Find("Main Menu/Canvas/Main Menu/Panel/Title Panel/Title Buttons/Quit Button").GetComponent<MenuButtonHolder>().ButtonRef.onClick.Invoke();
+                GameObject.Find(popupPrefix + "Popup Text").GetComponent<TextMeshProUGUI>().text = "A new update is avaliable for NeonWhiteRP, do you want to visit the download page?";
+                Button button = GameObject.Find(popupPrefix + "Popup Buttons/Button Yes/Button").GetComponent<Button>();
+                Button.ButtonClickedEvent oldEvent = button.onClick;
+                button.onClick = new Button.ButtonClickedEvent();
+                button.onClick.AddListener(() =>
+                {
+                    Application.OpenURL(githubLink);
+                    button.onClick = oldEvent;
+                    GameObject.Find(popupPrefix + "Popup Buttons/Button No").GetComponent<MenuButtonHolder>().ButtonRef.onClick.Invoke();
+                });
             }
             else
             {
@@ -364,7 +410,14 @@ namespace NeonWhiteRPNew
         public static MelonPreferences_Category config;
         public static MelonPreferences_Entry<bool> RPEnable;
 
+        public static MelonPreferences_Entry<string> MenuFirst;
+        public static MelonPreferences_Entry<string> MenuSecond;
+        public static MelonPreferences_Entry<string> CustomMenuFirst;
+        public static MelonPreferences_Entry<string> CustomMenuSecond;
+
         public static MelonPreferences_Entry<bool> SessionVsLevel;
+        public static MelonPreferences_Entry<string> SpeedrunFirst;
+        public static MelonPreferences_Entry<string> SpeedrunSecond;
 
         public static MelonPreferences_Entry<string> HUBFirst;
         public static MelonPreferences_Entry<string> HUBSecond;
@@ -384,6 +437,8 @@ namespace NeonWhiteRPNew
         public static MelonPreferences_Entry<string> CITYHALLLOBBYSecond;
         public static MelonPreferences_Entry<string> WHITESROOMFirst;
         public static MelonPreferences_Entry<string> WHITESROOMSecond;
+        public static MelonPreferences_Entry<string> GlobalRankFirst;
+        public static MelonPreferences_Entry<string> GlobalRankSecond;
 
         public static MelonPreferences_Entry<bool> DIALOGUEEnable;
         public static MelonPreferences_Entry<string> DIALOGUEFirst;
@@ -396,28 +451,38 @@ namespace NeonWhiteRPNew
             config = MelonPreferences.CreateCategory("Discord Rich Presence Settings");
             RPEnable = config.CreateEntry("Enable Rich Presence", true, description: "Enables Rich Presence, duh. (To fully remove \"RP\" effect, uninstall)");
 
+            MenuFirst = config.CreateEntry("Main Menu 1st Line", "In Main Menu", description: "Customize the first line that shows up when going into the Main Menu.");
+            MenuSecond = config.CreateEntry("Main Menu 2nd Line", "", description: "Customize the second line that shows up when going into the Main Menu. To remove, leave blank.");
+            CustomMenuFirst = config.CreateEntry("Custom Menu 1st Line", "In Custom Menu", description: "Customize the first line that shows up when going into the Custom Menu.");
+            CustomMenuSecond = config.CreateEntry("Custom Menu 2nd Line", "", description: "Customize the second line that shows up when going into the Custom Menu. To remove, leave blank.");
+
             SessionVsLevel = config.CreateEntry("Enable Session Times", true, description: "If set to TRUE, the RP 'time elapsed' will stay across restarts. If FALSE, time elapsed will reset after restarting the level.");
-            HUBFirst = config.CreateEntry("Central Heaven 1st Line", "Wandering around Central Heaven", description: "Customize the first line that shows up when going into the Central Heaven. To remove, leave blank.");
+            SpeedrunFirst = config.CreateEntry("Speedrun 1st Line", "Speedrunning - %levelname%", description: "Customize the first line that shows up when playing a level. \nAllowed placeholders: %levelname% %besttime% %levelrank% %resets%");
+            SpeedrunSecond = config.CreateEntry("Speedrun 2nd Line", "PB: %besttime% (#%levelrank%) | Resets: %resets%", description: "Customize the second line that shows up when playing a level. To remove, leave blank. \nAllowed placeholders: %levelname% %besttime% %levelrank% %resets%");
+
+            HUBFirst = config.CreateEntry("Central Heaven 1st Line", "Wandering around Central Heaven", description: "Customize the first line that shows up when going into the Central Heaven.");
             HUBSecond = config.CreateEntry("Central Heaven 2nd Line", "", description: "Customize the second line that shows up when going into the Central Heaven. To remove, leave blank.");
-            PORTALFirst = config.CreateEntry("Heavens Gate 1st Line", "Selecting a Job at Heaven's Gate", description: "Customize the first line that shows up when going into Heaven's Gate. To remove, leave blank.");
+            PORTALFirst = config.CreateEntry("Heavens Gate 1st Line", "Selecting a Job at Heaven's Gate", description: "Customize the first line that shows up when going into Heaven's Gate.");
             PORTALSecond = config.CreateEntry("Heavens Gate 2nd Line", "", description: "Customize the second line that shows up when going into Heaven's Gate. To remove, leave blank.");
-            BEACHFirst = config.CreateEntry("Beach 1st Line", "Enjoying the view of a Beach", description: "Customize the first line that shows up when going into the Beach. To remove, leave blank.");
+            BEACHFirst = config.CreateEntry("Beach 1st Line", "Enjoying the view of a Beach", description: "Customize the first line that shows up when going into the Beach.");
             BEACHSecond = config.CreateEntry("Beach 2nd Line", "", description: "Customize the second line that shows up when going into the Beach. To remove, leave blank.");
-            BARFirst = config.CreateEntry("Neon Bar 1st Line", "Talking with other Neons", description: "Customize the first line that shows up when going into the Bar. To remove, leave blank.");
+            BARFirst = config.CreateEntry("Neon Bar 1st Line", "Talking with other Neons", description: "Customize the first line that shows up when going into the Bar.");
             BARSecond = config.CreateEntry("Neon Bar 2nd Line", "at a Neon Bar", description: "Customize the second line that shows up when going into the Bar. To remove, leave blank.");
-            SQUAREFirst = config.CreateEntry("Believers Park 1st Line", "Talking with residents", description: "Customize the first line that shows up when going into Believer's Park. To remove, leave blank.");
+            SQUAREFirst = config.CreateEntry("Believers Park 1st Line", "Talking with residents", description: "Customize the first line that shows up when going into Believer's Park.");
             SQUARESecond = config.CreateEntry("Believers Park 2nd Line", "at Believer's Park", description: "Customize the second line that shows up when going into Believer's Park. To remove, leave blank.");
-            CHURCHFirst = config.CreateEntry("Cathedral 1st Line", "Attending the daily sermon", description: "Customize the first line that shows up when going into The Cathedral. To remove, leave blank.");
+            CHURCHFirst = config.CreateEntry("Cathedral 1st Line", "Attending the daily sermon", description: "Customize the first line that shows up when going into The Cathedral.");
             CHURCHSecond = config.CreateEntry("Cathedral 2nd Line", "at The Cathedral", description: "Customize the second line that shows up when going into The Cathedral. To remove, leave blank.");
-            SHRINEFirst = config.CreateEntry("Neon Mask Shrine 1st Line", "Visiting the Neon Mask Shrine", description: "Customize the first line that shows up when going into Neon Mask Shrine. To remove, leave blank.");
+            SHRINEFirst = config.CreateEntry("Neon Mask Shrine 1st Line", "Visiting the Neon Mask Shrine", description: "Customize the first line that shows up when going into Neon Mask Shrine.");
             SHRINESecond = config.CreateEntry("Neon Mask Shrine 2nd Line", "", description: "Customize the second line that shows up when going into Neon Mask Shrine. To remove, leave blank.");
-            CITYHALLLOBBYFirst = config.CreateEntry("Heaven Central Authority 1st Line", "Getting new assignments from Mikey", description: "Customize the first line that shows up when going into Heaven Central Authority. To remove, leave blank.");
+            CITYHALLLOBBYFirst = config.CreateEntry("Heaven Central Authority 1st Line", "Getting new assignments from Mikey", description: "Customize the first line that shows up when going into Heaven Central Authority.");
             CITYHALLLOBBYSecond = config.CreateEntry("Heaven Central Authority 2nd Line", "at Heaven Central Authority", description: "Customize the second line that shows up when going into Heaven Central Authority. To remove, leave blank.");
-            WHITESROOMFirst = config.CreateEntry("Whites Room 1st Line", "Resting in White's Room", description: "Customize the first line that shows up when going into White's Room. To remove, leave blank.");
+            WHITESROOMFirst = config.CreateEntry("Whites Room 1st Line", "Resting in White's Room", description: "Customize the first line that shows up when going into White's Room.");
             WHITESROOMSecond = config.CreateEntry("Whites Room 2nd Line", "", description: "Customize the second line that shows up when going into White's Room. To remove, leave blank.");
+            GlobalRankFirst = config.CreateEntry("Global Neon Ranking 1st Line", "%playername%'s Global Neon Rank:", description: "Customize the first line that shows up when going into Global Ranking. \nAllowed placeholders: %playername% %globalrank%");
+            GlobalRankSecond = config.CreateEntry("Global Neon Ranking 2nd Line", "#%globalrank%", description: "Customize the second line that shows up when going into Global Ranking. To remove, leave blank. \nAllowed placeholders: %playername% %globalrank%");
 
             DIALOGUEEnable = config.CreateEntry("Enable Dialogue Rich Presence", true, description: "Enables Rich Presence for cutscenes/dialogue.");
-            DIALOGUEFirst = config.CreateEntry("Dialogue 1st Line", "Viewing a cutscene", description: "Customize the first line that shows up when watching a cutscene/dialogue. To remove, leave blank.");
+            DIALOGUEFirst = config.CreateEntry("Dialogue 1st Line", "Viewing a cutscene", description: "Customize the first line that shows up when watching a cutscene/dialogue.");
             DIALOGUESecond = config.CreateEntry("Dialogue 2nd Line", "", description: "Customize the second line that shows up when watching a cutscene/dialogue. To remove, leave blank.");
         }
     }
